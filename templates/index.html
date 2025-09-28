@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body background="background.jpg">
+    <title>Garden Scene</title>
+    <style>
+        .button-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 40px;
+        }
+        .animated-button {
+            font-family: 'Poppins', 'Segoe UI', Arial, sans-serif;
+            font-size: 1.7rem;
+            padding: 18px 54px;
+            color: #fff;
+            background: linear-gradient(90deg, #228B22 0%, #6cdb17 40%, #f9c846 80%, #43a047 100%);
+            border: 3px solid #43a047;
+            border-radius: 40px;
+            box-shadow: 0 0 16px #43a047, 0 0 32px #f9c846, 0 0 8px #228B22;
+            outline: none;
+            cursor: pointer;
+            position: relative;
+            transition: box-shadow 0.3s, transform 0.2s;
+            animation: glow-border 2s infinite linear;
+            overflow: hidden;
+        }
+        .animated-button::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            background: rgba(67, 160, 71, 0.35);
+            box-shadow: 0 0 32px 16px #43a04788, 0 0 64px 32px #f9c84655;
+            pointer-events: none;
+            animation: ripple-effect 1.5s infinite;
+            z-index: 0;
+        }
+        @keyframes ripple-effect {
+            0% {
+                opacity: 0.7;
+                transform: translate(-50%, -50%) scale(0.7);
+            }
+            70% {
+                opacity: 0.3;
+                transform: translate(-50%, -50%) scale(1.1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(1.4);
+            }
+        }
+        
+        @keyframes glow-border {
+            0% { box-shadow: 0 0 8px #39ff14, 0 0 16px #7ed957; }
+            50% { box-shadow: 0 0 32px #39ff14, 0 0 64px #7ed957; }
+            100% { box-shadow: 0 0 8px #39ff14, 0 0 16px #7ed957; }
+        }
+        .animated-button:active {
+            animation: button-click 0.4s;
+        }
+        @keyframes button-click {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.12) rotate(-2deg); box-shadow: 0 0 48px #39ff14, 0 0 96px #7ed957; }
+            100% { transform: scale(1); }
+        }
+         #platform-desc {
+            text-align: center;
+            margin: 32px 0 0 0;
+            font-size: 2rem;
+            font-family: 'Poppins', 'Segoe UI', Arial, sans-serif;
+            color: #43a047;
+            font-weight: 600;
+            text-shadow: 0 0 8px #f9c846, 0 0 16px #7ed957;
+            letter-spacing: 1px;
+        }
+    </style>
+    <div id="web-name"><h1>ECO-LEARN</h1></div>
+<div id="learn-play-protect">Learn. Play. Protect The Planet.</div>
+<div id="platform-desc">Gamified Enviromental Education Platform</div>
+   
+       
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap" rel="stylesheet">
+    <script>
+        function randomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+        const leafSVG = `<svg width="24" height="24" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20 5 Q25 10 30 20 Q25 35 10 30 Q5 20 20 5 Z" stroke="#228B22" stroke-width="2.5" fill="#7ed957"/>
+            <path d="M20 5 Q18 18 20 35" stroke="#228B22" stroke-width="1.5" fill="none"/>
+        </svg>`;
+        function createLeaf() {
+            const leaf = document.createElement('div');
+            leaf.className = 'leaf';
+            leaf.innerHTML = leafSVG;
+            const left = randomInt(0, window.innerWidth - 24);
+            leaf.style.left = left + 'px';
+            leaf.style.animationDuration = randomInt(4, 7) + 's';
+            leaf.style.transform = `rotate(${randomInt(-30,30)}deg)`;
+            document.body.appendChild(leaf);
+            setTimeout(() => leaf.remove(), 8000);
+        }
+        setInterval(createLeaf, 500);
+    </script>
+    <a href="Front.html" text-decoration="none">
+   <div class="button-container">
+    <button class="animated-button">Enter Website</button>
+</div>
+</a>
+
+</body>
+</html>
