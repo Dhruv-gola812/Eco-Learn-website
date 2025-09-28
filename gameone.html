@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Trash Sorting Game</title>
+<style>
+  body {
+    font-family: 'Poppins', sans-serif;
+    text-align: center;
+    background: linear-gradient(to right, #56ab2f, #a8e063);
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+  }
+  .bin {
+  width: 260px;
+  min-height: 400px;  /* bada height */
+  border: 4px dashed #333;
+  border-radius: 25px;
+  font-size: 20px;
+  font-weight: bold;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px;
+  gap: 10px;
+  overflow-y: auto;  /* scroll if many items */
+}
+
+.item {
+  width: 100px;
+  height: 100px;      /* reduced size */
+  font-size: 50px;
+  cursor: grab;
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+  h1 {
+    color: #1b5e20;
+    font-size: 4em;
+    margin: 20px 0 10px;
+  }
+
+  #timer, #score {
+    font-size: 28px;
+    font-weight: bold;
+    margin: 10px;
+  }
+
+  .game-area {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    height: calc(100vh - 140px);
+    padding: 20px;
+    box-sizing: border-box;
+  }
+
+  #items {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 40px;
+    padding: 20px;
+    margin: auto;
+    overflow-y: auto;
+    max-height: 100%;
+  }
+
+  .item {
+    width: 220px;
+    height: 220px;
+    background: #ffffff;
+    border: 4px solid #333;
+    border-radius: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 100px;
+    cursor: grab;
+    transition: transform 0.2s, background 0.3s;
+  }
+
+  .item:active {
+    transform: scale(1.15);
+    background: #ffe082;
+  }
+
+  .bins {
+    width: 280px;
+    display: flex;
+    flex-direction: column;
+    gap: 35px;
+    padding: 10px;
+    margin-left: 20px;
+  }
+
+  .bin {
+    width: 260px;
+    min-height: 200px;
+    border: 4px dashed #333;
+    border-radius: 25px;
+    font-size: 24px;
+    font-weight: bold;
+    background: #ffffff;
+    transition: transform 0.3s, background 0.3s;
+    display: flex;
+    flex-direction: column; /* multiple items stack */
+    align-items: center;
+    padding: 10px;
+    gap: 5px;
+    overflow-y: auto; /* scroll if many items */
+  }
+
+  .bin:hover {
+    background: #f1f8e9;
+    transform: scale(1.05);
+  }
+
+  #message {
+    font-size: 36px;
+    font-weight: bold;
+    color: #1b5e20;
+    margin-top: 20px;
+    display: none;
+  }
+
+  #resetBtn {
+    margin-top: 15px;
+    padding: 14px 28px;
+    font-size: 20px;
+    background: #388e3c;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    display: none;
+  }
+
+  #resetBtn:hover {
+    background: #2e7d32;
+  }
+
+  .confetti {
+    position: fixed;
+    width: 12px;
+    height: 12px;
+    background-color: #f44336;
+    top: 0;
+    left: 50%;
+    opacity: 0.8;
+    animation: fall 3s linear forwards;
+  }
+  .item {
+  flex-shrink: 0;
+}
+
+
+  @keyframes fall {
+    0% { transform: translateY(0) rotate(0deg); }
+    100% { transform: translateY(100vh) rotate(720deg); }
+  }
+</style>
+</head>
+<body>
+<h1>♻️ Trash Sorting Challenge</h1>
+<div id="timer">Time: 60</div>
+<div id="score">Score: 0</div>
+
+<div class="game-area">
+  <div id="items"></div>
+  <div class="bins">
+    <div class="bin" id="plastic" ondrop="drop(event)" ondragover="allowDrop(event)">Plastic 🍼</div>
+    <div class="bin" id="paper" ondrop="drop(event)" ondragover="allowDrop(event)">Paper 📰</div>
+    <div class="bin" id="organic" ondrop="drop(event)" ondragover="allowDrop(event)">Organic 🍌</div>
+    <div class="bin" id="glass" ondrop="drop(event)" ondragover="allowDrop(event)">Glass 🍷</div>
+    <div class="bin" id="metal" ondrop="drop(event)" ondragover="allowDrop(event)">Metal 🥫</div>
+  </div>
+</div>
+
+<div id="message"></div>
+<button id="resetBtn" onclick="resetGame()">Play Again</button>
+
+<script>
+let score = 0;
+let placedItems = 0;
+let totalItems = 20;
+let timeLeft = 60;
+let timerInterval;
+
+const trashItems = [
+  {type:"plastic", icon:"🍼"}, {type:"plastic", icon:"🥤"}, {type:"plastic", icon:"🛍️"},
+  {type:"paper", icon:"📰"}, {type:"paper", icon:"📦"}, {type:"paper", icon:"📄"},
+  {type:"organic", icon:"🍎"}, {type:"organic", icon:"🍌"}, {type:"organic", icon:"🌽"},
+  {type:"glass", icon:"🍷"}, {type:"glass", icon:"🥛"}, {type:"glass", icon:"🍾"},
+  {type:"metal", icon:"🥫"}, {type:"metal", icon:"🔩"}, {type:"metal", icon:"⚙️"}
+];
+
+const itemsContainer = document.getElementById("items");
+
+function initGame() {
+  for (let i = 0; i < totalItems; i++) {
+    let random = trashItems[Math.floor(Math.random() * trashItems.length)];
+    let div = document.createElement("div");
+    div.className = "item";
+    div.draggable = true;
+    div.dataset.type = random.type;
+    div.innerText = random.icon;
+    div.id = "item" + i;
+    div.ondragstart = drag;
+    itemsContainer.appendChild(div);
+  }
+  startTimer();
+}
+
+function allowDrop(ev) {
+  ev.preventDefault();
+}
+
+function drag(ev) {
+  ev.dataTransfer.setData("text", ev.target.id);
+  ev.dataTransfer.setData("type", ev.target.dataset.type);
+}
+
+function drop(ev) {
+  ev.preventDefault();
+  const itemId = ev.dataTransfer.getData("text");
+  const itemType = ev.dataTransfer.getData("type");
+  const targetBin = ev.target.id;
+
+  if (itemType === targetBin) {
+    score += 10;
+    placedItems++;
+    document.getElementById("score").innerText = "Score: " + score;
+    ev.target.appendChild(document.getElementById(itemId));
+    if (placedItems === totalItems) gameComplete(true);
+  } else {
+    score -= 5;
+    document.getElementById("score").innerText = "Score: " + score;
+  }
+}
+
+function startTimer() {
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    document.getElementById("timer").innerText = "Time: " + timeLeft;
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+      gameComplete(false);
+    }
+  }, 1000);
+}
+
+function gameComplete(won) {
+  clearInterval(timerInterval);
+  let msg = document.getElementById("message");
+  msg.style.display = "block";
+  if (won) {
+    msg.innerText = "🎉 Great Job! You sorted all the trash! 🌱";
+    confettiEffect();
+  } else {
+    msg.innerText = "⏳ Time's up! Game Over!";
+  }
+  document.getElementById("resetBtn").style.display = "inline-block";
+}
+
+function confettiEffect() {
+  for (let i = 0; i < 150; i++) {
+    let confetti = document.createElement("div");
+    confetti.className = "confetti";
+    confetti.style.left = Math.random() * 100 + "vw";
+    confetti.style.backgroundColor = randomColor();
+    confetti.style.animationDuration = (Math.random() * 3 + 2) + "s";
+    document.body.appendChild(confetti);
+    setTimeout(() => confetti.remove(), 5000);
+  }
+}
+
+function randomColor() {
+  const colors = ["#f44336","#ffeb3b","#4caf50","#2196f3","#ff9800","#9c27b0"];
+  return colors[Math.floor(Math.random() * colors.length)];
+}
+
+function resetGame() {
+  location.reload();
+}
+
+initGame();
+</script>
+</body>
+</html>

@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>EcoPlay — Gamified Environmental Education</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-1: #e6f7ff; /* sky */
+    --bg-2: #e8f6ef; /* ground */
+    --glass: rgba(255,255,255,0.14);
+    --card: rgba(255,255,255,0.9);
+    --accent: #179973;
+    --accent-2: #2aa7d2;
+    --muted: #6b7280;
+    --glass-strong: rgba(255,255,255,0.22);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#083; background: linear-gradient(180deg,var(--bg-1),var(--bg-2));overflow-x:hidden}
+  /* Canvas background */
+  canvas{position:fixed;inset:0;z-index:0;display:block}
+  /* App shell */
+  .app{position:relative;min-height:100vh;z-index:5;display:flex;flex-direction:column}
+  header{display:flex;align-items:center;gap:16px;padding:14px 20px;backdrop-filter: blur(6px);background:linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));border-bottom:1px solid rgba(255,255,255,0.06);position:sticky;top:0;z-index:20}
+  .logo{display:flex;align-items:center;gap:12px}
+  .logo .mark{width:46px;height:46px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#5bd3a6);display:flex;align-items:center;justify-content:center;color:white;font-weight:800;box-shadow:0 6px 18px rgba(24,128,86,0.12)}
+  .nav{display:flex;gap:10px;margin-left:12px}
+  .nav button{background:transparent;border:none;padding:8px 12px;border-radius:10px;color:rgba(5,20,10,0.8);font-weight:600;cursor:pointer}
+  .nav button.active{background:var(--glass);box-shadow:0 6px 20px rgba(10,60,40,0.06)}
+  .spacer{flex:1}
+  .auth-btn{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;padding:8px 14px;border-radius:12px;border:none;cursor:pointer;font-weight:700;box-shadow:0 8px 24px rgba(34,180,140,0.14)}
+  main{padding:28px;display:grid;grid-template-columns: 1fr 380px;gap:24px;z-index:10}
+  /* Left column */
+  .left{display:flex;flex-direction:column;gap:18px}
+  .hero{background:linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.4));border-radius:16px;padding:20px;backdrop-filter: blur(8px);box-shadow:0 10px 30px rgba(9,60,30,0.05)}
+  .hero h1{margin:0;font-size:22px;color:#083}
+  .hero p{margin:8px 0 0;color:var(--muted)}
+  .cta-row{margin-top:14px;display:flex;gap:10px}
+  .cta{padding:10px 14px;border-radius:12px;border:none;font-weight:700;cursor:pointer}
+  .cta.play{background:linear-gradient(90deg,#2aa760,#13a7c3);color:white}
+  .cta.quiz{background:transparent;border:2px solid rgba(10,70,40,0.08);color:#064b2b}
+  /* cards grid */
+  .section-title{font-weight:800;color:#0b4227;margin:6px 0}
+  .card-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  .game-card{background:var(--card);padding:12px;border-radius:12px;box-shadow:0 8px 20px rgba(10,40,25,0.04);display:flex;flex-direction:column;gap:10px;cursor:pointer;transition:transform .14s ease}
+  .game-card:hover{transform:translateY(-6px)}
+  .game-card .meta{color:var(--muted);font-size:13px}
+  .play-small{align-self:flex-end;background:linear-gradient(90deg,#2fb06b,#2aa7d2);color:white;padding:8px 10px;border-radius:10px;border:none;cursor:pointer}
+  /* right column */
+  .right{display:flex;flex-direction:column;gap:12px}
+  .glass-card{background:rgba(255,255,255,0.85);padding:14px;border-radius:12px;box-shadow:0 10px 30px rgba(11,84,39,0.06)}
+  .leaderboard{display:flex;flex-direction:column;gap:8px}
+  .leader-tabs{display:flex;gap:8px;margin-bottom:8px}
+  .tab{padding:8px 10px;border-radius:8px;border:none;background:transparent;font-weight:700;cursor:pointer}
+  .tab.active{background:linear-gradient(90deg,#e6ffef,#dff7ff);color:#0a6b45}
+  .leader-row{display:flex;justify-content:space-between;padding:8px 10px;border-radius:8px;background:linear-gradient(180deg,rgba(255,255,255,0.6),rgba(255,255,255,0.9))}
+  /* quiz list */
+  .quiz-list{display:flex;flex-direction:column;gap:10px}
+  .quiz-card{padding:12px;border-radius:12px;background:linear-gradient(180deg,#ffffff,#f7fffb);display:flex;justify-content:space-between;align-items:center}
+  /* login modal */
+  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(6,10,6,0.4);z-index:100}
+  .modal.open{display:flex}
+  .modal .box{width:min(420px,94%);background:rgba(255,255,255,0.98);border-radius:12px;padding:18px;box-shadow:0 20px 60px rgba(6,40,20,0.12)}
+  .form-row{display:flex;flex-direction:column;gap:8px;margin:10px 0}
+  input[type="text"],input[type="email"],input[type="password"]{padding:10px;border-radius:8px;border:1px solid #e6e9ea}
+  .small{font-size:13px;color:var(--muted)}
+  /* footer */
+  footer{padding:16px;text-align:center;color:var(--muted);font-size:13px;z-index:10}
+  /* responsive */
+  @media (max-width:980px){
+    main{grid-template-columns:1fr; padding:16px}
+    .card-grid{grid-template-columns:1fr}
+    .right{order:2}
+  }
+
+  /* CONFETTI (for quiz win) */
+  .confetti {position:fixed;z-index:120;pointer-events:none;inset:0;overflow:hidden}
+  .confetti .piece{position:absolute;width:10px;height:16px;opacity:0.95;transform-origin:center;animation:fall 3000ms linear forwards}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg);opacity:0.9}}
+  /* small helpers */
+  .badge{display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(40,150,90,0.12);color:#0b6b44;font-weight:800}
+  .muted{color:var(--muted)}
+</style>
+</head>
+<body>
+<canvas id="bgCanvas"></canvas>
+
+<div class="app">
+  <header>
+    <div class="logo">
+      <div class="mark">EP</div>
+      <div>
+        <div style="font-weight:800">EcoPlay</div>
+        <div style="font-size:12px;color:var(--muted)">Learn. Play. Protect.</div>
+      </div>
+    </div>
+
+    <nav class="nav" aria-label="Main nav">
+      <button class="active" data-target="home">Home</button>
+      <button data-target="games">Games</button>
+      <button data-target="quiz">Quiz</button>
+      <button data-target="leader">Leaderboard</button>
+    </nav>
+
+    <div class="spacer"></div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <div class="small muted" id="pointsDisplay">Points: <strong id="pointsVal">0</strong></div>
+      <button class="auth-btn" id="openLogin">Login / Signup</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="left" id="home">
+      <div class="hero">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <h1>Today's Mission: Save Water — Small habits, big impact</h1>
+            <p>Complete a quick quiz or play a game to earn <span class="badge">eco points</span>.</p>
+            <div class="cta-row">
+              <button class="cta play" onclick="scrollToSection('games')">Play a Game</button>
+              <button class="cta quiz" onclick="scrollToSection('quiz')">Take a Quiz</button>
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div class="muted">Level</div>
+            <div style="font-weight:800;font-size:20px;color:#0a5b3a">Rising Sapling</div>
+            <div class="small muted" style="margin-top:6px">Keep streak to level up</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 class="section-title">Games</h3>
+        <div class="card-grid" id="gamesList">
+          <div class="game-card" data-game="sort">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div style="font-weight:800">Garbage Sort Race</div>
+                <div class="meta">Drag & drop items into correct bins. 60s</div>
+              </div>
+              <div><button class="play-small" onclick="startGame('sort', event)">Play</button></div>
+            </div>
+          </div>
+
+          <div class="game-card" data-game="plant">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div style="font-weight:800">Plant-a-Tree</div>
+                <div class="meta">Plant species on a mini map and reduce pollution.</div>
+              </div>
+              <div><button class="play-small" onclick="startGame('plant', event)">Play</button></div>
+            </div>
+          </div>
+
+          <div class="game-card" data-game="memory">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div style="font-weight:800">Eco Memory</div>
+                <div class="meta">Match animals with habitats.</div>
+              </div>
+              <div><button class="play-small" onclick="startGame('memory', event)">Play</button></div>
+            </div>
+          </div>
+
+          <div class="game-card" data-game="puzzle">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div style="font-weight:800">Energy Puzzle</div>
+                <div class="meta">Balance energy tiles to reduce emissions.</div>
+              </div>
+              <div><button class="play-small" onclick="startGame('puzzle', event)">Play</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px">
+        <h3 class="section-title">Quick Quiz Preview</h3>
+        <div class="quiz-list">
+          <div class="quiz-card">
+            <div>
+              <div style="font-weight:800">Water Saving Quiz</div>
+              <div class="muted">5 Questions — 2 mins</div>
+            </div>
+            <div><button class="play-small" onclick="openQuiz('water')">Start</button></div>
+          </div>
+
+          <div class="quiz-card">
+            <div>
+              <div style="font-weight:800">Recycling Basics</div>
+              <div class="muted">6 Questions — 3 mins</div>
+            </div>
+            <div><button class="play-small" onclick="openQuiz('recycle')">Start</button></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="right">
+      <div class="glass-card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div class="small muted">Today's Tip</div>
+            <div style="font-weight:800">Turn off taps while brushing — Save ~8L/min</div>
+          </div>
+          <div style="text-align:right">
+            <div class="small muted">Streak</div>
+            <div style="font-weight:800">3 days</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-card leaderboard">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-weight:800">Leaderboard</div>
+          <div class="leader-tabs">
+            <button class="tab active" data-tab="daily">Daily</button>
+            <button class="tab" data-tab="weekly">Weekly</button>
+            <button class="tab" data-tab="all">All-time</button>
+          </div>
+        </div>
+        <div id="leaderBody">
+          <!-- sample rows injected from JS -->
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div class="small muted">Profile</div>
+            <div style="font-weight:800">Guest</div>
+            <div class="small muted">Sign in to save progress</div>
+          </div>
+          <div><button class="auth-btn" id="quickLogin">Login</button></div>
+        </div>
+      </div>
+
+    </aside>
+  </main>
+<form action="/login" method="POST">
+  <input type="text" name="username" placeholder="Enter Username" required>
+  <input type="password" name="password" placeholder="Enter Password" required>
+  <button type="submit">Login</button>
+</form>
+
+  <footer>
+    EcoPlay — Gamified Environmental Education • Demo for Hackathon
+  </footer>
+</div>
+
+<!-- Login Modal -->
+<div class="modal" id="loginModal" aria-hidden="true">
+  <div class="box" role="dialog" aria-modal="true">
+    <h3 style="margin:0 0 6px">Login / Signup</h3>
+    <div class="small muted">Use a demo account or create a quick profile (no backend in demo).</div>
+    <div class="form-row">
+      <label class="small muted">Name</label>
+      <input id="nameField" type="text" placeholder="Your name">
+      <label class="small muted">Email</label>
+      <input id="emailField" type="email" placeholder="you@example.com">
+      <label class="small muted">Password</label>
+      <input id="passField" type="password" placeholder="password">
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button onclick="closeLogin()" style="padding:8px 12px;border-radius:8px;border:none;background:#eee">Cancel</button>
+      <button class="auth-btn" onclick="doLogin()">Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- Quiz Modal -->
+<div class="modal" id="quizModal" aria-hidden="true">
+  <div class="box" style="width:min(720px,96%)">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <h3 id="quizTitle" style="margin:0">Quiz</h3>
+        <div class="small muted" id="quizMeta">5 Questions • 2 min</div>
+      </div>
+      <div><button onclick="closeQuiz()" style="padding:8px 10px;border-radius:8px;border:none;background:#f3f3f3">Close</button></div>
+    </div>
+
+    <div id="quizContent" style="margin-top:12px">
+      <!-- Question injected here -->
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;margin-top:12px">
+      <button class="play-small" onclick="submitAnswer()">Next</button>
+    </div>
+  </div>
+</div>
+
+<!-- Game Modal (placeholder) -->
+<div class="modal" id="gameModal" aria-hidden="true">
+  <div class="box" style="width:min(820px,96%)">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div><h3 id="gameTitle" style="margin:0">Game</h3><div class="small muted" id="gameMeta"></div></div>
+      <div><button onclick="closeGame()" style="padding:8px 10px;border-radius:8px;border:none;background:#f3f3f3">Close</button></div>
+    </div>
+    <div id="gameArea" style="margin-top:12px;min-height:260px;display:flex;align-items:center;justify-content:center">
+      <!-- small demo game content -->
+      <div id="gamePlaceholder" style="text-align:center;color:var(--muted)">
+        <div style="font-weight:800;font-size:20px">Game Demo</div>
+        <div style="margin-top:8px">For hackathon demo, interactive game here (Phaser or custom script).</div>
+        <div style="margin-top:14px"><button class="play-small" onclick="completeGame()">Complete & Earn 20 pts</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- confetti container -->
+<div class="confetti" id="confettiRoot" aria-hidden="true"></div>
+
+<script>
+/* ------------------ Canvas: Leaves + Water Waves ------------------ */
+const canvas = document.getElementById('bgCanvas');
+const ctx = canvas.getContext('2d');
+let W = innerWidth, H = innerHeight;
+const DPR = window.devicePixelRatio || 1;
+function resizeCanvas(){
+  W = innerWidth; H = innerHeight;
+  canvas.width = W * DPR; canvas.height = H * DPR;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+const leaves = [];
+const LEAF_COUNT = Math.min(40, Math.floor(W/60));
+for(let i=0;i<LEAF_COUNT;i++){
+  leaves.push({
+    x: Math.random()*W,
+    y: Math.random()*H,
+    size: 8 + Math.random()*20,
+    sx: (Math.random()*1.2 + 0.2),
+    sy: (Math.random()*0.8 + 0.1),
+    angle: Math.random()*Math.PI*2,
+    spin: (Math.random()-0.5)*0.08,
+    sway: Math.random()*60,
+    color: `rgba(${40+Math.random()*80}, ${100+Math.random()*120}, ${40+Math.random()*60}, ${0.85-Math.random()*0.4})`
+  });
+}
+
+let mouse = {x: W/2, y: H/2};
+window.addEventListener('mousemove', e=>{mouse.x = e.clientX; mouse.y = e.clientY});
+
+let lastT = performance.now();
+function draw(ts){
+  const now = ts || performance.now();
+  const dt = (now - lastT) / 16.6;
+  lastT = now;
+  ctx.clearRect(0,0,W,H);
+
+  // sky gradient
+  const g = ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0, '#e6f7ff');
+  g.addColorStop(1, '#eafaf0');
+  ctx.fillStyle = g;
+  ctx.fillRect(0,0,W,H);
+
+  // distant hills
+  ctx.beginPath();
+  ctx.fillStyle = '#dff4e0';
+  ctx.ellipse(W*0.2, H*1.05, W*0.9, H*0.45, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // sun (slightly follow mouse)
+  const sunX = W * 0.85 + (mouse.x - W/2) * 0.03;
+  const sunY = H * 0.14 + (mouse.y - H/2) * 0.02;
+  const rad = 60;
+  ctx.beginPath();
+  ctx.fillStyle = 'rgba(255,232,120,0.9)';
+  ctx.arc(sunX, sunY, rad, 0, Math.PI*2);
+  ctx.fill();
+
+  // draw leaves
+  for(let lf of leaves){
+    lf.x += 0.2*lf.sx * dt;
+    lf.y += 0.4*lf.sy * dt;
+    lf.angle += lf.spin * dt;
+    lf.sway = 30 * Math.sin((ts/1000) + lf.x*0.01);
+    if(lf.x > W + 40){ lf.x = -40; lf.y = Math.random()*H*0.6; }
+    if(lf.y > H + 40){ lf.y = -40; lf.x = Math.random()*W; }
+
+    ctx.save();
+    ctx.translate(lf.x + Math.sin(lf.x*0.01 + ts*0.001)*6, lf.y + lf.sway*0.2);
+    ctx.rotate(lf.angle);
+    ctx.beginPath();
+    ctx.fillStyle = lf.color;
+    ctx.moveTo(0, -lf.size*0.5);
+    ctx.bezierCurveTo(lf.size*0.6, -lf.size*0.2, lf.size*0.6, lf.size*0.8, 0, lf.size*0.9);
+    ctx.bezierCurveTo(-lf.size*0.6, lf.size*0.8, -lf.size*0.6, -lf.size*0.2, 0, -lf.size*0.5);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // water waves (bottom)
+  drawWater(ts);
+
+  requestAnimationFrame(draw);
+}
+function drawWater(t){
+  const waveTop = H * 0.72;
+  // base fill
+  const grad = ctx.createLinearGradient(0,waveTop,0,H);
+  grad.addColorStop(0, 'rgba(42,167,210,0.12)');
+  grad.addColorStop(1, 'rgba(10,110,90,0.06)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,waveTop,W,H-waveTop);
+
+  // multiple sine waves
+  ctx.globalAlpha = 0.9;
+  const waves = [
+    {amp: 18, len: 0.008, speed: 0.8},
+    {amp: 12, len: 0.012, speed: 1.2},
+    {amp: 8,  len: 0.02,  speed: 1.6}
+  ];
+  for(let i=0;i<waves.length;i++){
+    const {amp,len,speed} = waves[i];
+    ctx.beginPath();
+    ctx.moveTo(0, waveTop);
+    for(let x=0;x<=W;x+=4){
+      const y = waveTop + Math.sin((x * len) + (t/1000)*speed) * amp + i*6;
+      ctx.lineTo(x,y);
+    }
+    ctx.lineTo(W, H);
+    ctx.lineTo(0, H);
+    ctx.closePath();
+    ctx.fillStyle = `rgba(20,150,130,${0.08 + i*0.02})`;
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  // draw small ripples when mouse near bottom
+  const d = Math.max(0, (mouse.y - waveTop));
+  if(d < 140){
+    ctx.beginPath();
+    ctx.ellipse(mouse.x, waveTop + 8, 32, 8, 0, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(255,255,255,0.03)';
+    ctx.fill();
+  }
+}
+
+/* pause when hidden */
+document.addEventListener('visibilitychange', ()=>{
+  if(document.hidden) cancelAnimationFrame(draw);
+  else requestAnimationFrame(draw);
+});
+requestAnimationFrame(draw);
+
+/* ------------------ UI: Navigation & Modals ------------------ */
+const navBtns = document.querySelectorAll('.nav button');
+navBtns.forEach(btn=>{
+  btn.addEventListener('click', ()=> {
+    navBtns.forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const t = btn.dataset.target;
+    scrollToSection(t);
+  });
+});
+function scrollToSection(id){
+  const map = {home: 'home', games: 'gamesList', quiz: 'quizModal', leader:'leaderBody'};
+  if(id === 'quiz'){ openQuiz('water'); return; }
+  if(id === 'leader'){ document.querySelector('.tab').click(); document.querySelector(`[data-target="leader"]`)?.classList.add('active'); document.querySelector('#leaderBody').scrollIntoView({behavior:'smooth'}); return;}
+  const el = document.getElementById(map[id]) || document.getElementById(id);
+  if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+/* Login modal */
+const loginModal = document.getElementById('loginModal');
+document.getElementById('openLogin').addEventListener('click', ()=> openLogin());
+document.getElementById('quickLogin').addEventListener('click', ()=> openLogin());
+function openLogin(){
+  loginModal.classList.add('open');
+}
+function closeLogin(){
+  loginModal.classList.remove('open');
+}
+function doLogin(){
+  const name = document.getElementById('nameField').value || 'Guest';
+  document.querySelector('.glass-card .small + div')?.textContent; // noop
+  alert('Welcome, ' + name + ' — demo login accepted.');
+  closeLogin();
+}
+
+/* Game modal controls */
+const gameModal = document.getElementById('gameModal');
+function startGame(name, evt){
+  if(evt) evt.stopPropagation();
+  document.getElementById('gameTitle').textContent = {
+    sort: 'Garbage Sort Race',
+    plant: 'Plant-a-Tree',
+    memory: 'Eco Memory',
+    puzzle: 'Energy Puzzle'
+  }[name] || 'Game';
+  document.getElementById('gameMeta').textContent = 'Demo playable area — full game to implement.';
+  gameModal.classList.add('open');
+}
+function closeGame(){ gameModal.classList.remove('open'); }
+function completeGame(){
+  awardPoints(20);
+  closeGame();
+  triggerConfetti();
+}
+
+/* ------------------ Quiz system (simple demo) ------------------ */
+const quizModal = document.getElementById('quizModal');
+let currentQuiz = null;
+let quizState = null;
+
+const QUIZZES = {
+  water: {
+    title: 'Water Saving Quiz',
+    meta: '5 Questions • Quick',
+    q: [
+      {q:'Best time to water plants?', a:['Noon','Early morning','Evening','Afternoon'], correct:1},
+      {q:'Turn off tap while brushing?', a:['Yes','No','Sometimes','Never'], correct:0},
+      {q:'Shower or bath uses less water?', a:['Bath','Shower (short)','Both same','Depends'], correct:1},
+      {q:'Recycle greywater for?', a:['Drinking','Irrigation','Cooking','None'], correct:1},
+      {q:'Fixing leak saves?', a:['Tiny','Large amounts','No effect','Just noise'], correct:1}
+    ]
+  },
+  recycle: {
+    title: 'Recycling Basics',
+    meta: '6 Questions • Quick',
+    q: [
+      {q:'Which is compostable?', a:['Plastic bottle','Banana peel','Glass','Battery'], correct:1},
+      {q:'Type of plastic #1 is?', a:['PET','PVC','PS','LDPE'], correct:0},
+      {q:'Electronic waste goes to?', a:['Landfill','E-waste center','Compost','Recycle bin'], correct:1},
+      {q:'Rinse containers before recycle?', a:['Yes','No','Maybe','Only oil'], correct:0},
+      {q:'Can you recycle pizza box with oil?', a:['Yes','No','Only clean part','Depends'], correct:2},
+      {q:'Glass is?', a:['Recyclable','Never','Hazardous','Compostable'], correct:0}
+    ]
+  }
+};
+
+function openQuiz(key){
+  currentQuiz = QUIZZES[key];
+  if(!currentQuiz) return;
+  quizState = {i:0, score:0};
+  document.getElementById('quizTitle').textContent = currentQuiz.title;
+  document.getElementById('quizMeta').textContent = currentQuiz.meta;
+  renderQuestion();
+  quizModal.classList.add('open');
+}
+function closeQuiz(){ quizModal.classList.remove('open'); quizState = null; }
+function renderQuestion(){
+  const container = document.getElementById('quizContent');
+  container.innerHTML = '';
+  if(!quizState) return;
+  const qobj = currentQuiz.q[quizState.i];
+  const qdom = document.createElement('div');
+  qdom.innerHTML = `<div style="font-weight:800">${quizState.i + 1}. ${qobj.q}</div>`;
+  const opts = document.createElement('div');
+  opts.style.marginTop = '12px';
+  qobj.a.forEach((opt, idx) => {
+    const btn = document.createElement('button');
+    btn.textContent = opt;
+    btn.style.display = 'block';
+    btn.style.width = '100%';
+    btn.style.padding = '10px';
+    btn.style.marginBottom = '8px';
+    btn.style.borderRadius = '8px';
+    btn.style.border = '1px solid #e6e9ea';
+    btn.onclick = ()=> selectAnswer(idx);
+    opts.appendChild(btn);
+  });
+  container.appendChild(qdom);
+  container.appendChild(opts);
+}
+function selectAnswer(idx){
+  const qobj = currentQuiz.q[quizState.i];
+  const correct = qobj.correct === idx;
+  if(correct){ quizState.score += 10; showToast('Correct +10 pts', true); }
+  else { showToast('Incorrect', false); }
+  quizState.i++;
+  if(quizState.i >= currentQuiz.q.length){
+    // finish
+    awardPoints(quizState.score);
+    closeQuiz();
+    triggerConfetti();
+    setTimeout(()=> showScorePopup(quizState.score), 300);
+  } else {
+    renderQuestion();
+  }
+}
+function submitAnswer(){ /* stub for Next button if needed */ }
+function showScorePopup(score){
+  alert('Quiz complete! You earned ' + score + ' points.');
+}
+
+/* small toast */
+function showToast(msg, ok){
+  const el = document.createElement('div');
+  el.textContent = msg;
+  el.style.position = 'fixed';
+  el.style.bottom = '26px';
+  el.style.left = '50%';
+  el.style.transform = 'translateX(-50%)';
+  el.style.background = ok ? 'linear-gradient(90deg,#2fb06b,#2aa7d2)' : '#ff6b6b';
+  el.style.color = 'white';
+  el.style.padding = '10px 16px';
+  el.style.borderRadius = '10px';
+  el.style.zIndex = 200;
+  document.body.appendChild(el);
+  setTimeout(()=> el.style.opacity = '0.0', 900);
+  setTimeout(()=> el.remove(), 1400);
+}
+
+/* ------------------ Points & Leaderboard (demo) ------------------ */
+let points = 0;
+function awardPoints(n){
+  points += n;
+  document.getElementById('pointsVal').textContent = points;
+  // update leaderboard demo (simple insertion)
+  const row = {name: 'You', pts: points, level: Math.min(10, Math.floor(points/50)+1)};
+  updateLeaderboards(row);
+}
+const sampleLeaders = {
+  daily: [
+    {rank:1,name:'Aisha',pts:920},{rank:2,name:'Raj',pts:810},{rank:3,name:'8B (Class)',pts:760}
+  ],
+  weekly:[
+    {rank:1,name:'Raj',pts:5120},{rank:2,name:'Aisha',pts:4920},{rank:3,name:'Dhruv',pts:4780}
+  ],
+  all:[
+    {rank:1,name:'Aisha',pts:12040},{rank:2,name:'Tina',pts:10120},{rank:3,name:'Raj',pts:9870}
+  ]
+};
+function renderLeaders(scope='daily'){
+  const container = document.getElementById('leaderBody');
+  container.innerHTML = '';
+  const list = sampleLeaders[scope] || [];
+  list.forEach((r,i)=>{
+    const div = document.createElement('div');
+    div.className = 'leader-row';
+    div.innerHTML = `<div style="display:flex;gap:12px;align-items:center"><div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(90deg,#f0fff4,#e6f7ff);display:flex;align-items:center;justify-content:center;font-weight:800">${i+1}</div><div><div style="font-weight:800">${r.name}</div><div class="small muted">Level ${Math.min(10,Math.floor(r.pts/500)+1)}</div></div></div><div style="text-align:right"><div style="font-weight:800">${r.pts} pts</div></div>`;
+    container.appendChild(div);
+  });
+}
+renderLeaders('daily');
+
+/* tabs */
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    const scope = tab.dataset.tab;
+    renderLeaders(scope);
+  });
+});
+
+/* add or update "You" to sample leaderboards */
+function updateLeaderboards(row){
+  // put You on top of daily for demo if > others
+  const daily = sampleLeaders.daily;
+  const found = daily.findIndex(r=>r.name === 'You');
+  if(found >= 0) daily.splice(found,1);
+  daily.push({name: row.name, pts: row.pts});
+  daily.sort((a,b)=>b.pts - a.pts);
+  // reassign ranks
+  daily.forEach((r,i)=> r.rank = i+1);
+  renderLeaders(document.querySelector('.tab.active').dataset.tab);
+}
+
+/* ------------------ Confetti effect ------------------ */
+function triggerConfetti(){
+  const root = document.getElementById('confettiRoot');
+  root.innerHTML = '';
+  const colors = ['#2aa760','#2aa7d2','#f0c84b','#ff6b6b','#9b59b6'];
+  for(let i=0;i<40;i++){
+    const el = document.createElement('div');
+    el.className = 'piece';
+    el.style.left = Math.random()*100 + '%';
+    el.style.top = (Math.random()*10) + '%';
+    el.style.background = colors[Math.floor(Math.random()*colors.length)];
+    el.style.width = (6 + Math.random()*10) + 'px';
+    el.style.height = (10 + Math.random()*20) + 'px';
+    el.style.transform = `rotate(${Math.random()*360}deg)`;
+    el.style.animationDelay = (Math.random()*400) + 'ms';
+    root.appendChild(el);
+  }
+  setTimeout(()=> root.innerHTML = '', 3200);
+}
+
+/* ------------------ small helpers ------------------ */
+document.addEventListener('keydown', (e)=> {
+  if(e.key === 'Escape'){
+    document.querySelectorAll('.modal.open').forEach(m=>m.classList.remove('open'));
+  }
+});
+</script>
+</body>
+</html>
